@@ -188,7 +188,7 @@ var __={
             this.getContent(window.location.origin+"/components/"+componentId.toLowerCase()+"/ui"+((__.config.use_min) ? __.config.use_min : "")+".html", function(html){
                 document.getElementById(componentId+"ComponentHolder").innerHTML = html;
                 that.components[componentId].html=html;
-                that.getScript(window.location.origin+"/components/"+componentId.toLowerCase()+"/logic"+((__.config.use_min) ? __.config.use_min : "")+".js", function(){ cb(); });
+                that.getScript(window.location.origin+"/components/"+componentId.toLowerCase()+"/logic"+((__.config.use_min) ? __.config.use_min : "")+".js", function(){ if(cb){cb();} });
             });
         }else{            
             this.components[componentId].data=params;
@@ -355,7 +355,9 @@ var __={
             button:function(id, hide){            
                 if(hide){
                     document.getElementById(id).removeChild(document.getElementById(id+"Spinner"));
+                    document.getElementById(id).disabled=false;
                 }else{
+                    document.getElementById(id).disabled=true;
                     document.getElementById(id).innerHTML = '<span id="'+id+'Spinner" class="spinner-border spinner-border-sm spinner-dark mr-2"></span>'+document.getElementById(id).innerHTML;
                 }
             },
