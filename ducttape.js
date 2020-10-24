@@ -90,12 +90,13 @@ var __={
                     p.response(null,this.response,this.status);
                 }
                 
-            } else {              
-                p.response({"error":this.statusText, "details":this.response}, null, this.status);  
+            } else {  
+                console.log(this.response)            
+                p.response({"error":this.statusText, "details":this.response.trim()}, null, this.status);  
             }
           };
         request.onerror = function(e) {        
-            p.response({"error":this.statusText, "details":this.response}, null, this.status);
+            p.response({"error":this.statusText, "details":this.response.trim()}, null, this.status);
         };
         request.ontimeout = function(e) {        
             p.response("timeout", null, this.status);
@@ -183,6 +184,7 @@ var __={
     ******************************************** */
     loadComponent:function(componentId, params, cb){
         var that=this;        
+
         if(typeof __.components[componentId]==="undefined"){
             this.components[componentId]={"html":null, "js":null, "data":params};
             this.getContent(window.location.origin+"/components/"+componentId.toLowerCase()+"/ui"+((__.config.use_min) ? __.config.use_min : "")+".html", function(html){
@@ -193,7 +195,7 @@ var __={
         }else{            
             this.components[componentId].data=params;
             document.getElementById(componentId+"ComponentHolder").innerHTML = this.components[componentId].html;
-            cb();
+            if(cb) cb();
         }
         
     },
@@ -320,7 +322,7 @@ var __={
         if(params.indexOf("uppercase")>-1){ possible += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }
         if(params.indexOf("numbers")>-1){ possible += "0123456789"; }
         if(params.indexOf("specials")>-1){ possible += '!@#$%^&*()-_+=[]{}?'; }
-        if(params.indexOf("exclude_confusing")>-1){ possible.replace(/[o0il1]/ig,""); }        
+        if(params.indexOf("exclude_confusing")>-1){ possible=possible.replace(/[o0il1]/ig,""); }        
 
         for( var i=0; i < len; i++ ){
             text += possible.charAt(Math.floor(Math.random() * possible.length));
@@ -346,11 +348,7 @@ var __={
                 var html='<div style="width:100%; height:100%; position:fixed; top:0; left:0; background: rgba(0,0,0,0.5); z-index:999999;"></div>';
             },
             screen:function(hide){
-                if(hide){
-                    document.getElementById("screen").removeChild(document.getElementById("spinner"));
-                }else{
-                    document.getElementById("screen").innerHTML = '<div id="spinner" class="text-align:center;" style="margin-top:40%;"><div class="spinner-border"></div></div>';
-                }                
+                this.section("screen",hide);                
             },
             button:function(id, hide){            
                 if(hide){
