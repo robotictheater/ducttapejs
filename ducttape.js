@@ -46,8 +46,9 @@ var __={
         Loads up local js file that are used by
         your app like models or shared scripts.
     ******************************************** */
-    load:function(files, cb){
+    load:function(files, cb){       
         var loading=0;
+        if(typeof files==="string"){files=[files];}
         if(files){
             loading+=files.length;
 
@@ -182,22 +183,20 @@ var __={
     /*********************************************
         LOAD COMPONENT
     ******************************************** */
-    loadComponent:function(componentId, params, cb){
-        var that=this;        
-
-        if(typeof __.components[componentId]==="undefined"){
-            this.components[componentId]={"html":null, "js":null, "data":params};
-            this.getContent(window.location.origin+"/components/"+componentId.toLowerCase()+"/ui"+((__.config.use_min) ? __.config.use_min : "")+".html", function(html){
-                document.getElementById(componentId+"ComponentHolder").innerHTML = html;
-                that.components[componentId].html=html;
-                that.getScript(window.location.origin+"/components/"+componentId.toLowerCase()+"/logic"+((__.config.use_min) ? __.config.use_min : "")+".js", function(){ if(cb){cb();} });
-            });
-        }else{            
-            this.components[componentId].data=params;
-            document.getElementById(componentId+"ComponentHolder").innerHTML = this.components[componentId].html;
-            if(cb) cb();
-        }
+    loadComponent:function(component, params, cb){
+        var that=this;   
+        var componentId=((typeof component==="string") ? component : component[0]);
         
+        this.components[componentId]={"data":params};
+        this.getContent(window.location.origin+"/components/"+componentId.toLowerCase()+"/ui"+((__.config.use_min) ? __.config.use_min : "")+".html", function(html){
+            if(document.getElementById(componentId+"ComponentHolder")){
+                document.getElementById(componentId+"ComponentHolder").innerHTML = html;
+            }else if(document.getElementById(component[1]+"ComponentHolder")){
+                document.getElementById(component[1]+"ComponentHolder").innerHTML = html;
+            }
+            //that.components[componentId].html=html;
+            that.getScript(window.location.origin+"/components/"+componentId.toLowerCase()+"/logic"+((__.config.use_min) ? __.config.use_min : "")+".js", function(){ if(cb){cb();} });
+        });
     },
 
     /*********************************************
