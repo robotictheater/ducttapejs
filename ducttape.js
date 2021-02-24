@@ -7,6 +7,7 @@ var __={
     loading:0,
     params:{},
     js:null,
+    console:console,
     currentScript:document.currentScript,
     /*********************************************
         GET SCRIPT
@@ -21,7 +22,7 @@ var __={
             newScript.onload = function(){ cb(null, true)}; 
         }
         this.currentScript.parentNode.insertBefore(newScript, this.currentScript);
-        newScript.src = url;
+        newScript.src = url+((window.location.queryString("cachebuster")!==null) ? "?cachebuster="+__.rndString(10,["letters","numbers"]) : "")
     },
     
     /*********************************************
@@ -36,7 +37,7 @@ var __={
                 cb(xhr.responseText, xhr.status);
             }
         };        
-        xhr.open("GET", url, true);
+        xhr.open("GET", url+((window.location.queryString("cachebuster")!==null) ? "?cachebuster="+__.rndString(10,["letters","numbers"]) : ""), true);
         xhr.send();
     },
     
@@ -153,8 +154,13 @@ var __={
         ROUTE TO
     ******************************************** */
     routeTo:function(url, includeQS){
-        window.history.pushState('', '', url+((includeQS) ? window.location.search : ""));
-        this.router();
+        if(url.indexOf("http")===0){
+            window.location=url+((includeQS) ? window.location.search : "");
+        }else{
+            window.history.pushState('', '', url+((includeQS) ? window.location.search : ""));
+            this.router();
+        }
+        
     },
 
     /*********************************************
@@ -189,13 +195,25 @@ var __={
         
         this.components[componentId]={"data":params};
         this.getContent(window.location.origin+"/components/"+componentId.toLowerCase()+"/ui"+((__.config.use_min) ? __.config.use_min : "")+".html", function(html){
+            
             if(document.getElementById(componentId+"ComponentHolder")){
                 document.getElementById(componentId+"ComponentHolder").innerHTML = html;
             }else if(document.getElementById(component[1]+"ComponentHolder")){
                 document.getElementById(component[1]+"ComponentHolder").innerHTML = html;
             }
-            //that.components[componentId].html=html;
-            that.getScript(window.location.origin+"/components/"+componentId.toLowerCase()+"/logic"+((__.config.use_min) ? __.config.use_min : "")+".js", function(){ if(cb){cb();} });
+
+            that.getScript(window.location.origin+"/components/"+componentId.toLowerCase()+"/logic"+((__.config.use_min) ? __.config.use_min : "")+".js", function(){                 
+                if(cb){                                    
+                    if(typeof __.components[componentId.toLowerCase()].js.callback!=="undefined"){                        
+                        __.components[componentId.toLowerCase()].js.callback=cb;
+                        if(typeof __.components[componentId.toLowerCase()].js.onLoad!=="undefined"){
+                            __.components[componentId.toLowerCase()].js.onLoad();
+                        }
+                    }else{                        
+                        cb();
+                    }                    
+                } 
+            });
         });
     },
 
@@ -258,6 +276,16 @@ var __={
                     
                     if(el.getAttribute("storeas")==="array"){
                         dtr[el.name]=[el.value];
+                    }else if(el.getAttribute("storeas")==="number"){
+                        dtr[el.name]=Number([el.value]);
+                    }else if(el.getAttribute("storeas")==="string"){
+                        dtr[el.name]=[el.value].toString();
+                    }else if(el.getAttribute("storeas")==="bool"){
+                        if(el.value===""){
+                            dtr[el.name]=null;
+                        }else{
+                            dtr[el.name]=(["true","yes"].indexOf(el.value.toString().toLowerCase())>-1) || (Number(el.value)===1) || (el.value===true);
+                        }                        
                     }else if(el.type==="datetime-local"){
                         if(el.value){
                             dtr[el.name]=new Date(el.value).toString();
@@ -295,7 +323,15 @@ var __={
                     case "radio":
                         if(data[key]===el.value){
                             el.checked="checked";
+                        }else if(el.getAttribute("storeas")==="bool"){
+                            var fieldValue=(["true","yes"].indexOf(el.value.toString().toLowerCase())>-1) || (Number(el.value)===1) || (el.value===true);
+                            if(data[key]===fieldValue){
+                                el.checked="checked";
+                            }
                         }
+                    break;
+                    case "date":
+                        el.value=data[key].split("T")[0];
                     break;
                     default:
                         el.value=data[key];
@@ -349,22 +385,26 @@ var __={
             screen:function(hide){
                 this.section("screen",hide);                
             },
-            button:function(id, hide){            
-                if(hide){
-                    document.getElementById(id).removeChild(document.getElementById(id+"Spinner"));
-                    document.getElementById(id).disabled=false;
-                }else{
-                    document.getElementById(id).disabled=true;
-                    document.getElementById(id).innerHTML = '<span id="'+id+'Spinner" class="spinner-border spinner-border-sm spinner-dark mr-2"></span>'+document.getElementById(id).innerHTML;
+            button:function(id, hide){
+                if(document.getElementById(id)){
+                    if(hide){                    
+                        document.getElementById(id).removeChild(document.getElementById(id+"Spinner"));
+                        document.getElementById(id).disabled=false;
+                    }else{
+                        document.getElementById(id).disabled=true;
+                        document.getElementById(id).innerHTML = '<span id="'+id+'Spinner" class="spinner-border spinner-border-sm spinner-dark mr-2"></span>'+document.getElementById(id).innerHTML;
+                    }
                 }
             },
-            section:function(id, hide){            
-                if(hide){
-                    if(document.getElementById(id+"Spinner")){
-                        document.getElementById(id).removeChild(document.getElementById(id+"Spinner"));
-                    }    
-                }else{
-                    document.getElementById(id).innerHTML = document.getElementById(id).innerHTML+'<div id="'+id+'Spinner" style="position:absolute; top:30%; left:0; width:100%; text-align:center;"><span class="spinner-border mr-2"></span></div>';
+            section:function(id, hide){
+                if(document.getElementById(id)){        
+                    if(hide){
+                        if(document.getElementById(id+"Spinner")){
+                            document.getElementById(id).removeChild(document.getElementById(id+"Spinner"));
+                        }    
+                    }else{
+                        document.getElementById(id).innerHTML = document.getElementById(id).innerHTML+'<div id="'+id+'Spinner" style="position:absolute; top:30%; left:0; width:100%; text-align:center; z-index:99999999;"><span class="spinner-border mr-2"></span></div>';
+                    }
                 }
             }
         }
@@ -389,4 +429,14 @@ window.location.queryString = function(name){
     if (!results) return null;
     if (!results[2]) return '';
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
-}
+};
+String.prototype.maxLength = function (len) {
+    if(this.length>len){
+        return this.slice(0,len) + " ...";
+    }else{
+        return this;
+    }
+};
+String.prototype.capitalize = function() {
+    return this.charAt(0).toUpperCase() + this.slice(1);
+};
