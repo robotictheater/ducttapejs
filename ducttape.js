@@ -85,16 +85,24 @@ var __={
             });
         }     
         request.onload = function() {
-            if (this.status >= 200 && this.status < 400) {              
+            if (this.status >= 200 && this.status < 400) { 
+                var responseObject=this.response;             
                 try{
-                    p.response(null,JSON.parse(this.response),this.status);
+                    responseObject=JSON.parse(this.response);                    
                 }catch(e){
-                    p.response(null,this.response,this.status);
+                    console.log(e,new Date());
                 }
+                p.response(null,responseObject,this.status);
                 
             } else {  
-                console.log(this.response)            
-                p.response({"error":this.statusText, "details":this.response.trim()}, null, this.status);  
+                console.log(this.response)   
+                
+                try{
+                    p.response(JSON.parse(this.response),null,this.status);
+                }catch(e){
+                    p.response(this.response,null,this.status);
+                } 
+                                         
             }
           };
         request.onerror = function(e) {        
@@ -115,39 +123,43 @@ var __={
         Allows you to define your apps pages
         and their handlers
     ******************************************** */
-    router:function(registerEventListener){        
+    router:function(registerEventListener){
         if(registerEventListener){ window.addEventListener('popstate', __.router); }
         var allRoutes=__.routes.slice();
+        var location = ((window.location.pathname[[window.location.pathname.length-1]]==="/") ? window.location.pathname.substr(0, window.location.pathname.length-1) : window.location.pathname);
         
-        function processRoute(){
-
+    
+        function processRoute(){    
             if(allRoutes.length>0){
-                var route = allRoutes.shift();                
-                var pathParams=route[0].split(":");
-                if(RegExp(pathParams[0].replace(/\//g,'\\/')).test(window.location.pathname)){
+                var route = allRoutes.shift();        
+                var routeRegex= "^";
+                var routeParts= route[0].substr(1).split("/");
+                var parameters={};
+                
+                routeParts.forEach(function(p, i){
+                    if(p.indexOf(":")===0){
+                        parameters[p.substr(1)]= location.substr(1).split("/")[i];
+                        routeRegex+='\\/.*';
+                    }else{
+                        routeRegex+='\\/'+p;
+                    }                    
+                });
 
-                    var paramsToSendAlong={};
-
-                    if(pathParams[1]){
-                        var paramNames = pathParams[1].split("/"),
-                            qsValues=window.location.pathname.replace(RegExp(pathParams[0].replace(/\//g,'\\/')),"").split("/");
-                            
-                        paramNames.forEach(function(key, i){
-                            paramsToSendAlong[key]=qsValues[i];
-                        });
-                        
-                    }
-
-                    route[1](paramsToSendAlong, function(){ processRoute(); });                
+                if(RegExp(routeRegex).test(location) && (location.substr(1).split("/").length <= routeParts.length)){                    
+                    window.location.search.substr(1).split("&").forEach(function(qs){                          
+                        if(qs && qs.indexOf("=")>0){                            
+                            parameters[qs.split("=")[0]]=qs.split("=")[1];
+                        }            
+                    });
+                    route[1](parameters, function(){ processRoute(); });
                 }else{
                     processRoute();
                 }
-            }
-            
 
+            }
         }
+        
         processRoute();
-    
     },
 
     /*********************************************
@@ -160,7 +172,6 @@ var __={
             window.history.pushState('', '', url+((includeQS) ? window.location.search : ""));
             this.router();
         }
-        
     },
 
     /*********************************************
@@ -178,9 +189,10 @@ var __={
         PROCESS TEMPLATE
     ******************************************** */
     processTemplate:function(templateId, data){
-        var html= document.getElementById(templateId).innerHTML;
+
+        var html=((document.getElementById(templateId)) ? document.getElementById(templateId).innerHTML : templateId);
         Object.keys(data).forEach(function(k){
-            var regex=new RegExp("{"+k+"}","g");
+            var regex=new RegExp("{{"+k+"}}","g");
             html=html.replace(regex, data[k]);
         });
         return html;
@@ -204,7 +216,7 @@ var __={
 
             that.getScript(window.location.origin+"/components/"+componentId.toLowerCase()+"/logic"+((__.config.use_min) ? __.config.use_min : "")+".js", function(){                 
                 if(cb){                                    
-                    if(typeof __.components[componentId.toLowerCase()].js.callback!=="undefined"){                        
+                    if(typeof __.components[componentId.toLowerCase()].js!=="undefined" && typeof __.components[componentId.toLowerCase()].js.callback!=="undefined"){                        
                         __.components[componentId.toLowerCase()].js.callback=cb;
                         if(typeof __.components[componentId.toLowerCase()].js.onLoad!=="undefined"){
                             __.components[componentId.toLowerCase()].js.onLoad();
@@ -224,12 +236,13 @@ var __={
         els=document.querySelectorAll("#"+id+" input, #"+id+" select, #"+id+" textarea, #"+id+" range");        
 
         var isInvalid=false;
-
+        function invalidFieldClass(){ return ((__.config["invalid_field_class"]) ? __.config["invalid_field_class"]  : "is-invalid"); }
+        
         els.forEach(function(el){
-            el.classList.remove("is-invalid");
+            el.classList.remove(invalidFieldClass());
             if(el.getAttribute("required")!==null || el.getAttribute("required")==="required"){            
                 if(el.value.trim().length===0){
-                    el.classList.add("is-invalid");
+                    el.classList.add(invalidFieldClass());
                     isInvalid=true;
                 }else{
                     let regex=/./ig;
@@ -245,7 +258,7 @@ var __={
                         break;
                         case "number":
                             if( (el.getAttribute("min")!==null && Number(str)<Number(el.getAttribute("min"))) || (el.getAttribute("max")!==null && Number(str)>Number(el.getAttribute("max"))  )){
-                                el.classList.add("is-invalid");
+                                el.classList.add(invalidFieldClass());
                                 isInvalid=true;
                             }
                         break;
@@ -253,7 +266,7 @@ var __={
     
                     if(regex){
                         if(!regex.test(str)){
-                            el.classList.add("is-invalid");
+                            el.classList.add(invalidFieldClass());
                             isInvalid=true;
                         }
                     }                        
@@ -262,6 +275,76 @@ var __={
         });
 
         return !isInvalid;
+    },
+
+    /*********************************************
+        FORM FIELD
+    ******************************************** */
+    validateFormField:function(ids){
+            
+    var isInvalid=false;
+    
+    function invalidFieldClass(){ return ((__.config["invalid_field_class"]) ? __.config["invalid_field_class"]  : "is-invalid"); }
+
+    if(typeof ids==="string"){
+        ids=[ids];
+    }
+    
+    ids.forEach(function(id){
+        el=document.getElementById(id);
+        el.classList.remove(invalidFieldClass());
+
+        if(el.getAttribute("required")!==null || el.getAttribute("required")==="required"){    
+            if(el.value.trim().length===0){
+                el.classList.add(invalidFieldClass());
+                isInvalid=true;
+            }else if(el.type==="text" && (el.getAttribute("min")!==null || el.getAttribute("max")!==null)){
+
+                if(el.getAttribute("min")!==null && el.value.trim().length<Number(el.getAttribute("min"))){
+                    el.classList.add(invalidFieldClass());
+                    isInvalid=true;
+                }
+
+                if(el.getAttribute("max")!==null && el.value.trim().length>Number(el.getAttribute("max"))){
+                    el.classList.add(invalidFieldClass());
+                    isInvalid=true;
+                }
+
+
+            }else{
+                let regex=/./ig;
+                let str=el.value.trim();
+
+                switch(el.type){
+                    case "email":
+                        regex=/\b[\w\.-]+@[\w\.-]+\.\w{2,4}\b/ig;
+                    break;
+                    case "tel":
+                        str=str.replace(/[^0-9]/g,"");
+                        regex=/[0-9]{10}/;
+                    break;
+                    case "number":
+                        if( (el.getAttribute("min")!==null && Number(str)<Number(el.getAttribute("min"))) || (el.getAttribute("max")!==null && Number(str)>Number(el.getAttribute("max"))  )){
+                            el.classList.add(invalidFieldClass());
+                            isInvalid=true;
+                        }
+                    break;
+                }
+                
+                if(regex){
+                    if(!regex.test(str)){
+                        el.classList.add(invalidFieldClass());
+                        isInvalid=true;
+                    }
+                }                        
+            }                
+        } 
+
+    });
+               
+
+
+    return !isInvalid;
     },
 
     /*********************************************
@@ -350,13 +433,14 @@ var __={
         if(!len){len=5;}
         var text = "", possible="";
         if(!params){
-            params=["letters","uppercase","numbers","specials"];
+            params=["letters","uppercase","numbers","specials","safespecials"];
         }
 
         if(params.indexOf("letters")>-1){ possible += "abcdefghijklmnopqrstuvwxyz"; }
         if(params.indexOf("uppercase")>-1){ possible += "ABCDEFGHIJKLMNOPQRSTUVWXYZ"; }
         if(params.indexOf("numbers")>-1){ possible += "0123456789"; }
         if(params.indexOf("specials")>-1){ possible += '!@#$%^&*()-_+=[]{}?'; }
+        if(params.indexOf("safespecials")>-1){ possible += '!*-_'; }
         if(params.indexOf("exclude_confusing")>-1){ possible=possible.replace(/[o0il1]/ig,""); }        
 
         for( var i=0; i < len; i++ ){
@@ -379,20 +463,30 @@ var __={
 
     ui:{
         loading:{
-            dim:function(){
-                var html='<div style="width:100%; height:100%; position:fixed; top:0; left:0; background: rgba(0,0,0,0.5); z-index:999999;"></div>';
+            dim:function(hide){
+                if(hide){
+                    document.body.removeChild(document.getElementById("ducttape-dim"));
+                }else{
+                    var dimDiv = document.createElement('div');
+                    dimDiv.style.cssText="width:100%; height:100%; position:fixed; top:0; left:0; background: rgba(0,0,0,0.5); z-index:999999;";
+                    dimDiv.id="ducttape-dim"
+                    document.body.appendChild(dimDiv);
+                }                
             },
             screen:function(hide){
+                this.dim(hide);
                 this.section("screen",hide);                
             },
             button:function(id, hide){
                 if(document.getElementById(id)){
                     if(hide){                    
-                        document.getElementById(id).removeChild(document.getElementById(id+"Spinner"));
+                        if(document.getElementById(id+"Spinner")){
+                            document.getElementById(id).removeChild(document.getElementById(id+"Spinner"));
+                        }                        
                         document.getElementById(id).disabled=false;
                     }else{
                         document.getElementById(id).disabled=true;
-                        document.getElementById(id).innerHTML = '<span id="'+id+'Spinner" class="spinner-border spinner-border-sm spinner-dark mr-2"></span>'+document.getElementById(id).innerHTML;
+                        document.getElementById(id).innerHTML = '<div id="'+id+'Spinner" class="spinner mr-1"></div>'+document.getElementById(id).innerHTML;
                     }
                 }
             },
@@ -403,7 +497,7 @@ var __={
                             document.getElementById(id).removeChild(document.getElementById(id+"Spinner"));
                         }    
                     }else{
-                        document.getElementById(id).innerHTML = document.getElementById(id).innerHTML+'<div id="'+id+'Spinner" style="position:absolute; top:30%; left:0; width:100%; text-align:center; z-index:99999999;"><span class="spinner-border mr-2"></span></div>';
+                        document.getElementById(id).innerHTML = document.getElementById(id).innerHTML+'<div id="'+id+'Spinner" style="position:absolute; top:30%; left:0; width:100%; text-align:center; z-index:99999999;"><div class="spinner spinner-big" style="margin:0 auto;"></div></div>';
                     }
                 }
             }
@@ -440,3 +534,5 @@ String.prototype.maxLength = function (len) {
 String.prototype.capitalize = function() {
     return this.charAt(0).toUpperCase() + this.slice(1);
 };
+
+if (!Array.prototype.some) { Array.prototype.some = function(fun, thisArg) { 'use strict'; if (this == null) { throw new TypeError('Array.prototype.some called on null or undefined'); } if (typeof fun !== 'function') { throw new TypeError(); } var t = Object(this); var len = t.length >>> 0; for (var i = 0; i < len; i++) { if (i in t && fun.call(thisArg, t[i], i, t)) { return true; } } return false; }; }
