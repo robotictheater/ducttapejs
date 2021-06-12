@@ -212,18 +212,20 @@ var __={
                 document.getElementById(componentId+"ComponentHolder").innerHTML = html;
             }else if(document.getElementById(component[1]+"ComponentHolder")){
                 document.getElementById(component[1]+"ComponentHolder").innerHTML = html;
+            }else{
+                document.getElementById("screen").innerHTML =  document.getElementById("screen").innerHTML + html;
             }
 
             that.getScript(window.location.origin+"/components/"+componentId.toLowerCase()+"/logic"+((__.config.use_min) ? __.config.use_min : "")+".js", function(){                 
                 if(cb){                                    
                     if(typeof __.components[componentId.toLowerCase()].js!=="undefined" && typeof __.components[componentId.toLowerCase()].js.callback!=="undefined"){                        
-                        __.components[componentId.toLowerCase()].js.callback=cb;
-                        if(typeof __.components[componentId.toLowerCase()].js.onLoad!=="undefined"){
-                            __.components[componentId.toLowerCase()].js.onLoad();
-                        }
+                        __.components[componentId.toLowerCase()].js.callback=cb;                        
                     }else{                        
                         cb();
-                    }                    
+                    }
+                    if(typeof __.components[componentId.toLowerCase()].js.onLoad!=="undefined"){
+                        __.components[componentId.toLowerCase()].js.onLoad();
+                    }
                 } 
             });
         });
