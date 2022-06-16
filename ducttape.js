@@ -193,12 +193,19 @@ var __={
     /*********************************************
         PROCESS TEMPLATE
     ******************************************** */
-    processTemplate:function(templateId, data){
+    /*processTemplate:function(templateId, data){
 
         var html=((document.getElementById(templateId)) ? document.getElementById(templateId).innerHTML : templateId);
         Object.keys(data).forEach(function(k){
             var regex=new RegExp("{{"+k+"}}","g");
             html=html.replace(regex, data[k]);
+        });
+        return html;
+    },*/
+    processTemplate:function(html, data){
+        Object.keys(data).forEach(function(k){
+            var regex=new RegExp("{{"+k+"}}","g");
+            html=html.replace(regex, eval("data."+k));
         });
         return html;
     },
@@ -233,6 +240,16 @@ var __={
                     }
                 } 
             });
+        });
+    },
+
+    /*********************************************
+        RENDER LAYOUT
+    ******************************************** */
+    renderLayout:function(layout, cb){
+        this.getContent(((typeof __.config!=="undefined" && typeof __.config.origin!=="undefined" ) ? __.config.origin : window.location.origin)+"/layouts/"+layout.toLowerCase()+((__.config.use_min) ? __.config.use_min : "")+".html", function(html){
+            document.body.innerHTML = html;
+            if(typeof cb==="function"){cb();}
         });
     },
 
@@ -380,6 +397,16 @@ var __={
                         }else{
                             dtr[el.name]=(["true","yes"].indexOf(el.value.toString().toLowerCase())>-1) || (Number(el.value)===1) || (el.value===true);
                         }                        
+                    }else if(el.getAttribute("storeas")==="group"){
+
+                        if(el.name.indexOf("|")>0){
+                            let groupData = el.name.split("|");
+                            if(typeof dtr[groupData[0]]==="undefined"){
+                                dtr[groupData[0]]={};
+                            }
+                            dtr[groupData[0]][groupData[1]]=((el.type==="number") ? Number(el.value) : el.value);
+                        }
+
                     }else if(el.type==="datetime-local"){
                         if(el.value){
                             dtr[el.name]=new Date(el.value).toString();
@@ -481,12 +508,27 @@ var __={
                     if(document.getElementById("ducttape-dim")){
                         document.body.removeChild(document.getElementById("ducttape-dim"));
                     }                    
-                }else{
+                }else if(!document.getElementById("ducttape-dim")){
                     var dimDiv = document.createElement('div');
                     dimDiv.style.cssText="width:100%; height:100%; position:fixed; top:0; left:0; background: rgba(0,0,0,0.5); z-index:999999;";
                     dimDiv.id="ducttape-dim"
                     document.body.appendChild(dimDiv);
                 }                
+            },
+            body:function(hide){
+                this.dim(hide);
+                if(hide){
+                    if(document.getElementById("bodySpinner")){
+                        document.body.removeChild(document.getElementById("bodySpinner"));
+                    }                    
+                }else if(!document.getElementById("bodySpinner")){
+                    var spinnerDiv = document.createElement('div');
+                    spinnerDiv.style.cssText="position:absolute; top:30%; left:0; width:100%; text-align:center; z-index:99999999;";
+                    spinnerDiv.innerHTML='<div class="spinner spinner-big" style="margin:0 auto;"></div>';
+                    spinnerDiv.id="bodySpinner"
+                    document.body.appendChild(spinnerDiv);
+                }
+                
             },
             screen:function(hide){
                 this.dim(hide);
@@ -520,11 +562,35 @@ var __={
         $:{
             prependHtml:function(el, html){ if(document.getElementById(el)){ document.getElementById(el).innerHTML = html + document.getElementById(el).innerHTML; } },
             appendHtml:function(el, html){ if(document.getElementById(el)){ document.getElementById(el).innerHTML += html; } },
-            html:function(el, html){ if(document.getElementById(el)){ document.getElementById(el).innerHTML = html; } }
+            html:function(el, html){ if(document.getElementById(el)){ document.getElementById(el).innerHTML = html; } },
+            addClass:function(selector, className){
+                for(let el of document.querySelectorAll(selector)){
+                    if(!el.classList.contains(className)){
+                        el.classList.add(className);
+                    }
+                }                
+            }
         }
     }
     
 };
+
+window._toast=function(m,c){
+    
+    if(document.getElementById("_toast")){
+        document.getElementById("_toast").parentNode.removeChild(document.getElementById("_toast"));
+    }
+    document.body.innerHTML+='<div id="_toast">'+m+'</div>';
+    
+    if(!c){
+        c="showToast";
+    }else{
+        c+=" showToast";
+    }
+
+    document.getElementById("_toast").className = c;
+    setTimeout(function(){ document.getElementById("_toast").className = document.getElementById("_toast").className.replace("showToast", ""); }, 3000);
+}
 
 window.isMobile = function() {
     let check = false;
