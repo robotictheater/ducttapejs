@@ -3,8 +3,6 @@
 The purpose of Ducttape JS is to make it dead simple to use VanillaJS to build web application front-ends without the need for heavy frameworks. 
 
 ### Recommended Project Structure
-There is nothing enforced beyond 
-
 
 ```
 /assets
