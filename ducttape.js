@@ -1,4 +1,4 @@
-/*v012023.1*/
+/*v012023.2*/
 
 var __ = {
     config: {},
@@ -575,25 +575,29 @@ var __ = {
         - obj the data object
         - mapping the document elements
     ******************************************** */
-    twoWayBind:function(obj, mapping){
-
+    dataBind:function(obj, mapping){
+      let tempObj=JSON.parse(JSON.stringify(obj));
+      
       Object.keys(mapping).forEach(function(key){
-        Object.defineProperty(obj, key,{
+ 
+        Object.defineProperty(obj, key, {
             get(){
-              if(document.getElementById(mapping[key])){
+              
+              if(document.getElementById(mapping[key])){                
                 switch(document.getElementById(mapping[key]).tagName){
-                  case "INPUT":
+                  case "INPUT":                   
                     return document.getElementById(mapping[key]).value.trim();
                   break;
                   default:
                     return document.getElementById(mapping[key]).innerHTML.trim();
                   break;
                 }
-              }else{
+              }else{                
                 return obj[key];
               }              
             },
-            set(newValue){
+
+            set(newValue){          
               if(document.getElementById(mapping[key])){
                 switch(document.getElementById(mapping[key]).tagName){
                   case "INPUT":
@@ -606,13 +610,22 @@ var __ = {
                 
               }
              
-            }
-        })
+            }            
+        });
+        
+       obj[key]=tempObj[key];       
       });
 
-      
+      Object.defineProperty(obj,"data",{
+        get(){
+          return JSON.parse(JSON.stringify(obj));
+        } 
+      });
+
+      tempObj=null;    
     },
 
+  
 
     /*********************************************
         UI 
