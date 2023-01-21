@@ -616,7 +616,7 @@ var __ = {
        obj[key]=tempObj[key];       
       });
 
-      Object.defineProperty(obj,"data",{
+      Object.defineProperty(obj,"__data",{
         get(){
           return JSON.parse(JSON.stringify(obj));
         } 
